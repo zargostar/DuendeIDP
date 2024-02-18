@@ -1,5 +1,7 @@
 using Duende.IdentityServer;
+using Duende.IdentityServer.AspNetIdentity;
 using Duende.IdentityServer.Models;
+using Duende.IdentityServer.Services;
 using Duende.IdentityServer.Test;
 using DuendeIDP;
 using DuendeIDP.Entities;
@@ -14,8 +16,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 IConfiguration configuration = builder.Configuration;
 builder.Services.AddRazorPages();
+builder.Services.AddOidcStateDataFormatterCache();
 builder.Services
-           .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+           .AddAuthentication(options =>
+           {
+               
+               options.DefaultChallengeScheme = "oidc";
+           })
            .AddCookie(options =>
            {
                // add an instance of the patched manager to the options:
@@ -25,6 +32,14 @@ builder.Services
                options.Cookie.SameSite = SameSiteMode.None;
                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
            });
+//builder.Services.AddAuthentication()
+//        .AddOpenIdConnect("demoidsrv", "IdentityServer", options =>
+//        {
+//            options.ClientId = "adminfrontend";
+          
+//            // ...
+//        });
+//builder.Services.AddScoped<IProfileService, CustomProfileService>();
 builder.Services.AddDbContext<DataBaseContext>(c => c.UseSqlServer(configuration["sqlConnection"]));
 builder.Services.AddIdentity<AppUser, IdentityRole>()
     .AddEntityFrameworkStores<DataBaseContext>()
@@ -38,13 +53,7 @@ builder.Services.AddIdentityServer(options =>
     options.Events.RaiseSuccessEvents = true;
     // see https://docs.duendesoftware.com/identityserver/v6/fundamentals/resources/
     options.EmitStaticAudienceClaim = true;
-})
-
-
-    //.AddInMemoryApiScopes(new List<ApiScope> { new ApiScope
-    //{ Name="adminpanel",DisplayName="admin panell"}
-    //})
-    .AddInMemoryApiScopes(new ApiScope[]
+}).AddInMemoryApiScopes(new ApiScope[]
     {
         new ApiScope("adminpanel","admin panell full accecc")
     })
@@ -91,7 +100,9 @@ builder.Services.AddIdentityServer(options =>
            AlwaysSendClientClaims = true,
         }
 
-    }).AddAspNetIdentity<AppUser>().AddProfileService<CustomProfileService>();
+    }).AddProfileService<CustomProfileService>()
+   . AddAspNetIdentity<AppUser>();
+
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
