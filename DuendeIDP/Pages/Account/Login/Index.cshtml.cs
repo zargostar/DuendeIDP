@@ -135,16 +135,21 @@ public class Index : PageModel
                     {
                         // The client is native, so this change in how to
                         // return the response is for better UX for the end user.
+                     
                         return this.LoadingPage(Input.ReturnUrl);
                     }
 
                     // we can trust model.ReturnUrl since GetAuthorizationContextAsync returned non-null
+                    Console.WriteLine("jyutuyttttttt");
+                    Console.WriteLine((Input.ReturnUrl.ToString()));
                     return Redirect(Input.ReturnUrl ?? "~/");
                 }
 
                 // request for a local page
                 if (Url.IsLocalUrl(Input.ReturnUrl))
                 {
+                    Console.WriteLine("jyutuyttttttt");
+                    Console.WriteLine((Input.ReturnUrl.ToString()));
                     return Redirect(Input.ReturnUrl);
                 }
                 else if (string.IsNullOrEmpty(Input.ReturnUrl))

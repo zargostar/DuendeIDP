@@ -1,7 +1,9 @@
+using Duende.IdentityServer;
 using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Test;
 using DuendeIDP;
 using DuendeIDP.Entities;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OrderServise.Infrastructure.Persistance;
@@ -10,21 +12,41 @@ using System.Collections;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-IConfiguration configuration=builder.Configuration;
+IConfiguration configuration = builder.Configuration;
 builder.Services.AddRazorPages();
+builder.Services
+           .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+           .AddCookie(options =>
+           {
+               // add an instance of the patched manager to the options:
+               options.CookieManager = new ChunkingCookieManager();
 
+               options.Cookie.HttpOnly = true;
+               options.Cookie.SameSite = SameSiteMode.None;
+               options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+           });
 builder.Services.AddDbContext<DataBaseContext>(c => c.UseSqlServer(configuration["sqlConnection"]));
 builder.Services.AddIdentity<AppUser, IdentityRole>()
     .AddEntityFrameworkStores<DataBaseContext>()
     .AddErrorDescriber<CustomIdentityError>()
     .AddDefaultTokenProviders();
-builder.Services.AddIdentityServer()
+builder.Services.AddIdentityServer(options =>
+{
+    options.Events.RaiseErrorEvents = true;
+    options.Events.RaiseInformationEvents = true;
+    options.Events.RaiseFailureEvents = true;
+    options.Events.RaiseSuccessEvents = true;
+    // see https://docs.duendesoftware.com/identityserver/v6/fundamentals/resources/
+    options.EmitStaticAudienceClaim = true;
+})
+
+
     //.AddInMemoryApiScopes(new List<ApiScope> { new ApiScope
     //{ Name="adminpanel",DisplayName="admin panell"}
     //})
     .AddInMemoryApiScopes(new ApiScope[]
     {
-        new ApiScope("adminpanel.fullaccess","admin panell full accecc")
+        new ApiScope("adminpanel","admin panell full accecc")
     })
     //.AddInMemoryApiResources()
     .AddDeveloperSigningCredential()
@@ -48,17 +70,27 @@ builder.Services.AddIdentityServer()
            ClientName="Next js admin",
            ClientId="adminfrontend",
            ClientSecrets= {new Secret ("secret".Sha256() ) },
-           AllowedGrantTypes=GrantTypes.CodeAndClientCredentials ,
+           //AllowedGrantTypes=GrantTypes.CodeAndClientCredentials ,
+            AllowedGrantTypes=GrantTypes.Code ,
+           RequireConsent = false,
+          //  ClientUri = configuration["PostLogoutRedirectUris"],
           // AllowedGrantTypes =  new[] { GrantType.AuthorizationCode },
-           RequirePkce=false,
+           RequirePkce=true,
+           // AllowedCorsOrigins= { "http://localhost:3000" },
            RedirectUris={configuration["RedirectUris"] },
            AllowOfflineAccess=true,
-          // PostLogoutRedirectUris={configuration["PostLogoutRedirectUris"] },
-           AllowedScopes={"openid","profile","adminpanel.fullaccess"},
+          PostLogoutRedirectUris={configuration["PostLogoutRedirectUris"] },
+          
+           AllowedScopes={
+                IdentityServerConstants.StandardScopes.OpenId,
+                IdentityServerConstants.StandardScopes.Profile,
+                "adminpanel"
+            },
            AccessTokenLifetime=3600*24*30,
            AlwaysIncludeUserClaimsInIdToken=true,
+           AlwaysSendClientClaims = true,
         }
-    
+
     }).AddAspNetIdentity<AppUser>().AddProfileService<CustomProfileService>();
 
 var app = builder.Build();
@@ -81,7 +113,6 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
@@ -90,5 +121,6 @@ app.UseIdentityServer();
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.UseCookiePolicy(new CookiePolicyOptions { MinimumSameSitePolicy = SameSiteMode.Lax });
 
 app.Run();

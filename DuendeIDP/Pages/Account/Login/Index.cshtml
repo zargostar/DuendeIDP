@@ -21,8 +21,9 @@
 
                     <div class="card-body">
                         <form asp-page="/Account/Login/Index">
+                            @* <input type="hidden" asp-for="Input.ReturnUrl" /> *@
                             <input type="hidden" asp-for="Input.ReturnUrl" />
-
+                            <div>grtry</div>
                             <div class="form-group">
                                 <label asp-for="Input.Username"></label>
                                 <input class="form-control" placeholder="Username" asp-for="Input.Username" autofocus>
