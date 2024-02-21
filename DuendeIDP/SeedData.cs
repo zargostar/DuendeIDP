@@ -1,8 +1,10 @@
 ﻿
 using DuendeIDP.Entities;
+using IdentityModel;
 using Microsoft.AspNetCore.Identity;
 
 using OrderServise.Infrastructure.Persistance;
+using System.Security.Claims;
 
 namespace DuendeIDP
 {
@@ -17,12 +19,14 @@ namespace DuendeIDP
                 {
                     var defaultUser = new AppUser()
                     {
-                        FirstName = "admin",
-                        LastName = "admin",
+                        FirstName = "majid",
+                        LastName = "mazroie",
                         UserName = "admin",
+                        EmailConfirmed = true,
+                        Email="zargostar@yahoo.com"
 
                     };
-
+                  
                     var defaulRoles = new List<IdentityRole>() {
                     new IdentityRole()
                     {
@@ -51,6 +55,9 @@ namespace DuendeIDP
                     {
                         await context.AddToRolesAsync(defaultUser, userRolesList);
                     }
+
+                    await context.AddClaimsAsync(defaultUser, new Claim[]
+                    { new Claim(JwtClaimTypes.Name, "majid mazroie") });
 
 
                 }

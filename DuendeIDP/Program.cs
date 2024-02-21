@@ -12,34 +12,10 @@ using OrderServise.Infrastructure.Persistance;
 using System.Collections;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
 IConfiguration configuration = builder.Configuration;
 builder.Services.AddRazorPages();
 builder.Services.AddOidcStateDataFormatterCache();
-builder.Services
-           .AddAuthentication(options =>
-           {
-               
-               options.DefaultChallengeScheme = "oidc";
-           })
-           .AddCookie(options =>
-           {
-               // add an instance of the patched manager to the options:
-               options.CookieManager = new ChunkingCookieManager();
 
-               options.Cookie.HttpOnly = true;
-               options.Cookie.SameSite = SameSiteMode.None;
-               options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-           });
-//builder.Services.AddAuthentication()
-//        .AddOpenIdConnect("demoidsrv", "IdentityServer", options =>
-//        {
-//            options.ClientId = "adminfrontend";
-          
-//            // ...
-//        });
-//builder.Services.AddScoped<IProfileService, CustomProfileService>();
 builder.Services.AddDbContext<DataBaseContext>(c => c.UseSqlServer(configuration["sqlConnection"]));
 builder.Services.AddIdentity<AppUser, IdentityRole>()
     .AddEntityFrameworkStores<DataBaseContext>()
@@ -52,23 +28,14 @@ builder.Services.AddIdentityServer(options =>
     options.Events.RaiseFailureEvents = true;
     options.Events.RaiseSuccessEvents = true;
     // see https://docs.duendesoftware.com/identityserver/v6/fundamentals/resources/
-    options.EmitStaticAudienceClaim = true;
+    // options.EmitStaticAudienceClaim = true;
 }).AddInMemoryApiScopes(new ApiScope[]
     {
         new ApiScope("adminpanel","admin panell full accecc")
     })
-    //.AddInMemoryApiResources()
+   // .AddInMemoryApiResources(new )
     .AddDeveloperSigningCredential()
-    //.AddInMemoryApiResources(new ApiResource[]
-    //{
-    //    // name and human-friendly name of our API
-    //    new ApiResource("doughnutapi", "Doughnut API")
-    //})
-    //.AddTestUsers(new List<TestUser>() {   new TestUser{
-    //    IsActive=true,
-    //    Password="123456",
-    //    Username="majid",
-    //    SubjectId="1" } })
+
     .AddInMemoryIdentityResources(new List<IdentityResource> {
         new IdentityResources.OpenId(),
         new IdentityResources.Profile(),
@@ -79,31 +46,32 @@ builder.Services.AddIdentityServer(options =>
            ClientName="Next js admin",
            ClientId="adminfrontend",
            ClientSecrets= {new Secret ("secret".Sha256() ) },
-           //AllowedGrantTypes=GrantTypes.CodeAndClientCredentials ,
-            AllowedGrantTypes=GrantTypes.Code ,
+           AllowedGrantTypes=GrantTypes.CodeAndClientCredentials ,
+           // AllowedGrantTypes=GrantTypes.Code ,
            RequireConsent = false,
-          //  ClientUri = configuration["PostLogoutRedirectUris"],
-          // AllowedGrantTypes =  new[] { GrantType.AuthorizationCode },
+           ClientUri = configuration["PostLogoutRedirectUris"],
            RequirePkce=true,
-           // AllowedCorsOrigins= { "http://localhost:3000" },
            RedirectUris={configuration["RedirectUris"] },
            AllowOfflineAccess=true,
           PostLogoutRedirectUris={configuration["PostLogoutRedirectUris"] },
-          
+
            AllowedScopes={
                 IdentityServerConstants.StandardScopes.OpenId,
                 IdentityServerConstants.StandardScopes.Profile,
-                "adminpanel"
+                "adminpanel",
             },
            AccessTokenLifetime=3600*24*30,
            AlwaysIncludeUserClaimsInIdToken=true,
            AlwaysSendClientClaims = true,
         }
 
-    }).AddProfileService<CustomProfileService>()
-   . AddAspNetIdentity<AppUser>();
-
-
+    }).AddAspNetIdentity<AppUser>()
+    .AddProfileService<CustomProfileService>();
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.SameSite = SameSiteMode.Lax;
+});
+builder.Services.AddAuthentication();
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
