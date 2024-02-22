@@ -6,6 +6,7 @@ using Duende.IdentityServer.Test;
 using DuendeIDP;
 using DuendeIDP.Entities;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OrderServise.Infrastructure.Persistance;
@@ -14,6 +15,7 @@ using System.Collections;
 var builder = WebApplication.CreateBuilder(args);
 IConfiguration configuration = builder.Configuration;
 builder.Services.AddRazorPages();
+builder.Services.AddControllers();
 builder.Services.AddOidcStateDataFormatterCache();
 
 builder.Services.AddDbContext<DataBaseContext>(c => c.UseSqlServer(configuration["sqlConnection"]));
@@ -31,7 +33,8 @@ builder.Services.AddIdentityServer(options =>
     // options.EmitStaticAudienceClaim = true;
 }).AddInMemoryApiScopes(new ApiScope[]
     {
-        new ApiScope("adminpanel","admin panell full accecc")
+        new ApiScope("adminpanel","admin panell full accecc"),
+         new ApiScope(IdentityServerConstants.LocalApi.ScopeName),
     })
    // .AddInMemoryApiResources(new )
     .AddDeveloperSigningCredential()
@@ -56,6 +59,7 @@ builder.Services.AddIdentityServer(options =>
           PostLogoutRedirectUris={configuration["PostLogoutRedirectUris"] },
 
            AllowedScopes={
+                IdentityServerConstants.LocalApi.ScopeName,
                 IdentityServerConstants.StandardScopes.OpenId,
                 IdentityServerConstants.StandardScopes.Profile,
                 "adminpanel",
@@ -67,11 +71,23 @@ builder.Services.AddIdentityServer(options =>
 
     }).AddAspNetIdentity<AppUser>()
     .AddProfileService<CustomProfileService>();
+builder.Services.AddSwaggerGen();
+builder.Services.AddLocalApiAuthentication();
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.SameSite = SameSiteMode.Lax;
 });
 builder.Services.AddAuthentication();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(IdentityServerConstants.LocalApi.PolicyName, policy =>
+    {
+        policy.AddAuthenticationSchemes(IdentityServerConstants.LocalApi.AuthenticationScheme);
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("admin");
+        // custom requirements
+    });
+});
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -91,6 +107,8 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+    app.UseSwagger();
+    app.UseSwagger();
 }
 app.UseHttpsRedirection();
 app.UseStaticFiles();
@@ -98,7 +116,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseIdentityServer();
 app.UseAuthorization();
-
+app.MapControllers();
 app.MapRazorPages();
 app.UseCookiePolicy(new CookiePolicyOptions { MinimumSameSitePolicy = SameSiteMode.Lax });
 

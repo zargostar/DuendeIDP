@@ -56,8 +56,8 @@ namespace DuendeIDP
                         await context.AddToRolesAsync(defaultUser, userRolesList);
                     }
 
-                    await context.AddClaimsAsync(defaultUser, new Claim[]
-                    { new Claim(JwtClaimTypes.Name, "majid mazroie") });
+                    //await context.AddClaimsAsync(defaultUser, new Claim[]
+                    //{ new Claim(JwtClaimTypes.Name, "majid mazroie") });
 
 
                 }
